@@ -8,7 +8,8 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/go-redis/redis/v9"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/internal/uuid"
+	"github.com/google/uuid"
+
 	"github.com/zephyrus21/rego-short/database"
 	"github.com/zephyrus21/rego-short/helpers"
 )
@@ -24,7 +25,7 @@ type response struct {
 	CustomShort         string        `json:"short"`
 	Expiry              time.Duration `json:"expiry"`
 	XRateLimitRemaining int           `json:"rate_limit"`
-	XRateLimitRest      time.Duration `json:"rate_limit_rest"`
+	XRateLimitReset     time.Duration `json:"rate_limit_rest"`
 }
 
 func ShortenURL(c *fiber.Ctx) error {
@@ -73,7 +74,7 @@ func ShortenURL(c *fiber.Ctx) error {
 	//? check if the input URL is already exists
 	var id string
 	if body.CustomShort == "" {
-		id = uuid.NewV4().String()[:6]
+		id = uuid.New().String()[:6]
 	} else {
 		id = body.CustomShort
 	}
@@ -104,7 +105,7 @@ func ShortenURL(c *fiber.Ctx) error {
 		CustomShort:         "",
 		Expiry:              body.Expiry,
 		XRateLimitRemaining: 10,
-		XRateLimitRest:      30,
+		XRateLimitReset:     30,
 	}
 
 	r2.Decr(database.Ctx, c.IP())
@@ -113,7 +114,7 @@ func ShortenURL(c *fiber.Ctx) error {
 	resp.XRateLimitRemaining, _ = strconv.Atoi(val)
 
 	ttl, _ := r2.TTL(database.Ctx, c.IP()).Result()
-	resp.XRateLimitRest = ttl / time.Nanosecond / time.Minute
+	resp.XRateLimitReset = ttl / time.Nanosecond / time.Minute
 
 	resp.CustomShort = os.Getenv("DOMAIN") + "/" + id
 
